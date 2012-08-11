@@ -39,12 +39,13 @@ class caldav_driver extends calendar_driver
 		
 		// load library classes
 		require_once($this->cal->home . '/lib/caldav-client-v2.php');
+		require_once('/usr/share/awl/inc/iCalendar.php');
 		
 		// get the caldav path
 		$this->caldav_path = str_replace('%u', $_SESSION['username'], $this->rc->config->get('caldav_path'));
 		
 		// Open CalDAV connection
-		$this->caldav = new CalDAVClient($url, $_SESSION['username'], $this->rc->decrypt($_SESSION['password']));
+		$this->caldav = new CalDAVClient($this->caldav_path, $_SESSION['username'], $this->rc->decrypt($_SESSION['password']));
 	}
 	
 	
@@ -241,63 +242,177 @@ class caldav_driver extends calendar_driver
 		
 		$items = array();
 		
-		foreach ($this->calendars as $id => $cal)
+		foreach ($calendars as $id)
 		{
-			$path = $this->caldav_path . $id . "/";
-			$events = $this->caldav->GetEvents($begin, $finish, $path);
-			foreach ($events as $e)
-			{
-				$item = array();
-				$item['id'] = $e['href'];
-				$item['calendar'] = $id;
-				$properties = $event->GetProperties();
-				foreach ($properties as $property)
-				{
-					switch ($property->Name())
-					{
-						case "UID":
-							$item['uid'] = $property->Value();
-							break;
-						
-						case "DTSTART":
-							$item['start'] = $this->_MakeUTCDate($property->Value(), $this->_ParseTimezone($property->GetParameterValue("TZID")));
-							if (strlen($property->Value()) == 8)
-							{
-								$item['allday'] = true;
-							}
-							break;
-							
-						case "DTEND":
-							$item['end'] = $this->_MakeUTCDate($property->Value(), $this->_ParseTimezone($property->GetParameterValue("TZID")));
-							if (strlen($property->Value()) == 8)
-							{
-								$item['allday'] = true;
-							}
-							break;
-							
-						case "LAST-MODIFIED":
-							$item['changed'] = $this->_MakeUTCDate($property->Value());
-							break;
-						
-						case "SUMMARY":
-							$item['title'] = $property->Value();
-							break;
-							
-						case "LOCATION":
-							$item['location'] = $property->Value();
-							break;
-							
-						case "DESCRIPTION":
-							$item['description'] = $property->Value();
-							break;
-						
-					}
-				}
-				$this->cache['id'] = $item;
-				$items[] = $item;
-			}
+			$items = $this->_GetEvents($id, $begin, $finish);
 		}
 		return $items;
+	}
+	
+	private function _GetEvents($id, $start, $end)
+	{
+		$path = $this->caldav_path . $id . "/";
+		$events = $this->caldav->GetEvents($start, $end, $path);
+		foreach ($events as $e)
+		{
+			$item = array();
+			$item['id'] = $e['href'];
+			$item['calendar'] = $id;
+			
+			$ical = new iCalComponent($e['data']);
+			
+			//Get The Timezone
+			$timezones = $ical->GetComponents("VTIMEZONE");
+			$timezone = "";
+			if (count($timezones) > 0)
+			{
+				$timezone = $this->_ParseTimezone($timezones[0]->GetPValue("TZID"));
+			}
+			if (!$timezone)
+			{
+				$timezone = date_default_timezone_get();
+			}
+			
+			$vevents = $ical->GetComponents("VTIMEZONE", false);
+			foreach ($vevents as $event)
+			{
+				$rec = $event->GetProperties("RECURRENCE-ID");
+				if (count($rec) > 0)
+				{
+					$item['recurrence_id'] = reset($rec);
+				}
+				$this->_ParseEvent($event, &$item);
+			}
+			$this->cache['id'] = $item;
+			$items[] = $item;
+		}
+		return $items;
+	}
+	
+	private function _ParseEvent($event, $item)
+	{
+		$properties = $event->GetProperties();
+		foreach ($properties as $property)
+		{
+			switch ($property->Name())
+			{
+				case "UID":
+					$item['uid'] = $property->Value();
+					break;
+						
+				case "DTSTART":
+					$item['start'] = $this->_MakeUTCDate($property->Value(), $this->_ParseTimezone($property->GetParameterValue("TZID")));
+					if (strlen($property->Value()) == 8)
+					{
+						$item['allday'] = true;
+					}
+					break;
+		
+				case "DTEND":
+					$item['end'] = $this->_MakeUTCDate($property->Value(), $this->_ParseTimezone($property->GetParameterValue("TZID")));
+					if (strlen($property->Value()) == 8)
+					{
+						$item['allday'] = true;
+					}
+					break;
+		
+				case "LAST-MODIFIED":
+					$item['changed'] = $this->_MakeUTCDate($property->Value());
+					break;
+						
+				case "SUMMARY":
+					$item['title'] = $property->Value();
+					break;
+		
+				case "LOCATION":
+					$item['location'] = $property->Value();
+					break;
+		
+				case "DESCRIPTION":
+					$item['description'] = $property->Value();
+					break;
+						
+				case "RRULE":
+					$item['recurrence'] = $this->_ParseRRULE($property);
+					break;
+					
+				case "EXDATE":
+					$exdate = $property->Value();
+					$item['recurrence']['EXDATE'] = array();
+					$dates = explode(",", $exdata);
+					foreach ($dates as $date)
+					{
+						$item['recurrence']['EXDATE'][] = $this->_MakeUTCDate($date);
+					}
+					break;
+					
+				case "CATEGORIES":
+					$item['categories'] = $property->Value();
+					break;
+				
+				case "TRANSP":
+					switch ($property->Value())
+					{
+						case "TRANSPARENT":
+							$item['free_busy'] = "free";
+							break;
+						case "OPAQUE":
+							$item['free_busy'] = "busy";
+							break;
+					}
+					break;
+					
+				case "PRIORITY":
+					$item['priority'] = $property->Value();
+					break;
+					
+				case "CLASS":
+					switch ($property->Value())
+					{
+						case "PUBLIC":
+							$item['sensitivity'] = "0";
+							break;
+						case "PRIVATE":
+							$item['sensitivity'] = "1";
+							break;
+						case "CONFIDENTIAL":
+							$item['sensitivity'] = "2";
+							break;
+					}
+					break;
+			}
+		}
+	}
+	
+	private function _ParseRRULE($property)
+	{
+		$rrule = array();
+		$freq = $property->GetParameterValue("FREQ");
+		if ($freq)
+		{
+			$rrule['FREQ'] = $freq;
+		}
+		$values = $property->Value();
+		$rrules = explode(";", $rrulestr);
+		foreach ($rrules as $rrule)
+		{
+			$rule = explode("=", $rrule);
+			switch ($rule[0])
+			{
+				case "INTERVAL":
+					$rrule['INTERVAL'] = $rule[1];
+					break;
+				
+				case "UNTIL":
+					$rrule['UNTIL'] = $this->_MakeUTCDate($rule[1]);
+					break;
+				
+				case "COUNT":
+					$rrule['COUNT'] = $rule[1];
+					break;
+			}
+		}
+		return $rrule;
 	}
 	
 	/**
