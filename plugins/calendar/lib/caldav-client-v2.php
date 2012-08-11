@@ -10,7 +10,7 @@
 * @license   http://www.gnu.org/licenses/lgpl-3.0.txt  GNU LGPL version 3 or later
 */
 
-require_once('XMLDocument.php');
+require_once('/usr/share/awl/inc/XMLDocument.php');
 
 /**
 * A class for holding basic calendar information
