@@ -38,8 +38,11 @@ class caldav_driver extends calendar_driver
 		// load library classes
 		require_once($this->cal->home . '/lib/caldav-client-v2.php');
 		
+		// get the caldav path
+		$url = str_replace('%u', $this->rc->user->ID, $this->rc->config->get('caldav_path'));
+		
 		// Open CalDAV connection
-		$this->caldav = new CalDAVClient("http://calendar.dupie.be/caldav.php/info@dupondje.be/home", $this->rc->user->ID, $this->rc->decrypt($_SESSION['password']));
+		$this->caldav = new CalDAVClient($url, $this->rc->user->ID, $this->rc->decrypt($_SESSION['password']));
 	}
 	
 	
@@ -51,7 +54,7 @@ class caldav_driver extends calendar_driver
 		if (!$this->calendars)
 		{
 			$this->calendars = array();
-			$calendars = $this->_caldav->FindCalendars();
+			$calendars = $this->caldav->FindCalendars();
 			foreach ($calendars as $val)
 			{
 				$folder = array();
