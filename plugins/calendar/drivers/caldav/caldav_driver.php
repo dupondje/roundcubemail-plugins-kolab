@@ -62,7 +62,12 @@ class caldav_driver extends calendar_driver
 				if (is_array($fpath))
 				{
 					$id = array_pop($fpath);
-					$this->calendars[$id] = $val;
+					$cal = array();
+					$cal['active'] = true;
+					$cal['name'] = $val->displayname;
+					$cal['color'] = 'cc0000';
+					$cal['showalarms'] = 0;
+					$this->calendars[$id] = $cal;
 				}
 			}
 		}
