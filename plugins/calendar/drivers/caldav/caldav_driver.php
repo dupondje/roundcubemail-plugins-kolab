@@ -28,7 +28,9 @@ class caldav_driver extends calendar_driver
 	private $cal;
 	private $rc;
 	private $caldav;
+	private $caldav_path;
 	private $calendars;
+	private $cache;
 	
 	public function __construct($cal)
 	{
@@ -39,7 +41,7 @@ class caldav_driver extends calendar_driver
 		require_once($this->cal->home . '/lib/caldav-client-v2.php');
 		
 		// get the caldav path
-		$url = str_replace('%u', $_SESSION['username'], $this->rc->config->get('caldav_path'));
+		$this->caldav_path = str_replace('%u', $_SESSION['username'], $this->rc->config->get('caldav_path'));
 		
 		// Open CalDAV connection
 		$this->caldav = new CalDAVClient($url, $_SESSION['username'], $this->rc->decrypt($_SESSION['password']));
@@ -229,8 +231,130 @@ class caldav_driver extends calendar_driver
 	 */
 	public function load_events($start, $end, $query = null, $calendars = null)
 	{
-		// Not implemented
-		return null;
+		$begin = gmdate("Ymd\THis\Z", $start);
+		$finish = gmdate("Ymd\THis\Z", $end);
+		
+		if (empty($calendars))
+			$calendars = array_keys($this->calendars);
+		else if (is_string($calendars))
+			$calendars = explode(',', $calendars);
+		
+		$items = array();
+		
+		foreach ($this->calendars as $id => $cal)
+		{
+			$path = $this->caldav_path . $id . "/";
+			$events = $this->caldav->GetEvents($begin, $finish, $path);
+			foreach ($events as $e)
+			{
+				$item = array();
+				$item['id'] = $e['href'];
+				$item['calendar'] = $id;
+				$properties = $event->GetProperties();
+				foreach ($properties as $property)
+				{
+					switch ($property->Name())
+					{
+						case "UID":
+							$item['uid'] = $property->Value();
+							break;
+						
+						case "DTSTART":
+							$item['start'] = $this->_MakeUTCDate($property->Value(), $this->_ParseTimezone($property->GetParameterValue("TZID")));
+							if (strlen($property->Value()) == 8)
+							{
+								$item['allday'] = true;
+							}
+							break;
+							
+						case "DTEND":
+							$item['end'] = $this->_MakeUTCDate($property->Value(), $this->_ParseTimezone($property->GetParameterValue("TZID")));
+							if (strlen($property->Value()) == 8)
+							{
+								$item['allday'] = true;
+							}
+							break;
+							
+						case "LAST-MODIFIED":
+							$item['changed'] = $this->_MakeUTCDate($property->Value());
+							break;
+						
+						case "SUMMARY":
+							$item['title'] = $property->Value();
+							break;
+							
+						case "LOCATION":
+							$item['location'] = $property->Value();
+							break;
+							
+						case "DESCRIPTION":
+							$item['description'] = $property->Value();
+							break;
+						
+					}
+				}
+				$this->cache['id'] = $item;
+				$items[] = $item;
+			}
+		}
+		return $items;
+	}
+	
+	/**
+	 * Generate date object from string and timezone.
+	 * @param string $value
+	 * @param string $timezone
+	 */
+	private function _MakeUTCDate($value, $timezone = null)
+	{
+		$tz = null;
+		if ($timezone)
+		{
+			$tz = timezone_open($timezone);
+		}
+		if (!$tz)
+		{
+			//If there is no timezone set, we use the default timezone
+			$tz = timezone_open(date_default_timezone_get());
+		}
+		//20110930T090000Z
+		$date = date_create_from_format('Ymd\THis\Z', $value, timezone_open("UTC"));
+		if (!$date)
+		{
+			//20110930T090000
+			$date = date_create_from_format('Ymd\THis', $value, $tz);
+		}
+		if (!$date)
+		{
+			//20110930 (Append T000000Z to the date, so it starts at midnight)
+			$date = date_create_from_format('Ymd\THis\Z', $value . "T000000Z", $tz);
+		}
+		return $date;
+	}
+	
+	/**
+	 * Generate a tzid from various formats
+	 * @param str $timezone
+	 * @return timezone id
+	 */
+	private function _ParseTimezone($timezone)
+	{
+		//(GMT+01.00) Amsterdam / Berlin / Bern / Rome / Stockholm / Vienna
+		if (preg_match('/GMT(\\+|\\-)0(\d)/', $timezone, $matches))
+		{
+			return "Etc/GMT" . $matches[1] . $matches[2];
+		}
+		//(GMT+10.00) XXX / XXX / XXX / XXX
+		if (preg_match('/GMT(\\+|\\-)1(\d)/', $timezone, $matches))
+		{
+			return "Etc/GMT" . $matches[1] . "1" . $matches[2];
+		}
+		///inverse.ca/20101018_1/Europe/Amsterdam or /inverse.ca/20101018_1/America/Argentina/Buenos_Aires
+		if (preg_match('/\/[.[:word:]]+\/\w+\/(\w+)\/([\w\/]+)/', $timezone, $matches))
+		{
+			return $matches[1] . "/" . $matches[2];
+		}
+		return trim($timezone, '"');
 	}
 	
 	/**
