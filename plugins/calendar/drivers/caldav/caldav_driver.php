@@ -28,14 +28,15 @@ class caldav_driver extends calendar_driver
 	private $cal;
 	private $rc;
 	private $caldav;
+	private $calendars;
 	
 	public function __construct($cal)
 	{
-		// load library classes
-		require_once($this->cal->home . '/lib/caldav-client-v2.php');
-		
 		$this->cal = $cal;
 		$this->rc = $cal->rc;
+		
+		// load library classes
+		require_once($this->cal->home . '/lib/caldav-client-v2.php');
 		
 		// Open CalDAV connection
 		$this->caldav = new CalDAVClient("http://calendar.dupie.be/caldav.php/info@dupondje.be/home", $this->rc->user->ID, $this->rc->decrypt($_SESSION['password']));
@@ -47,7 +48,22 @@ class caldav_driver extends calendar_driver
 	 */
 	public function list_calendars()
 	{
-		
+		if (!$this->calendars)
+		{
+			$this->calendars = array();
+			$calendars = $this->_caldav->FindCalendars();
+			foreach ($calendars as $val)
+			{
+				$folder = array();
+				$fpath = explode("/", $val->url, -1);
+				if (is_array($fpath))
+				{
+					$id = array_pop($fpath);
+					$this->calendars[$id] = $val;
+				}
+			}
+		}
+		return $this->calendars;
 	}
 	
 	/**
@@ -61,7 +77,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function create_calendar($prop)
 	{
-		
+		//Not allowed ATM
+		return false;
 	}
 	
 	/**
@@ -76,7 +93,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function edit_calendar($prop)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -89,7 +107,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function subscribe_calendar($prop)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -101,7 +120,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function remove_calendar($prop)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -112,7 +132,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function new_event($event)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -123,7 +144,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function edit_event($event)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -138,7 +160,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function move_event($event)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -152,7 +175,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function resize_event($event)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -167,7 +191,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function remove_event($event, $force = true)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -181,7 +206,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function get_event($event, $writeable = null)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	/**
@@ -195,7 +221,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function load_events($start, $end, $query = null, $calendars = null)
 	{
-		
+		// Not implemented
+		return null;
 	}
 	
 	/**
@@ -214,7 +241,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function pending_alarms($time, $calendars = null)
 	{
-		
+		// Not implemented
+		return null;
 	}
 	
 	/**
@@ -226,7 +254,8 @@ class caldav_driver extends calendar_driver
 	 */
 	public function dismiss_alarm($event_id, $snooze = 0)
 	{
-		
+		// Not implemented
+		return false;
 	}
 	
 	
