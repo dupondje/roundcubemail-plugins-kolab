@@ -281,7 +281,7 @@ class caldav_driver extends calendar_driver
 				{
 					$item['recurrence_id'] = reset($rec);
 				}
-				$this->_ParseEvent($event, &$item);
+				$this->_ParseEvent($event, $item);
 			}
 			$this->cache['id'] = $item;
 			$items[] = $item;
@@ -289,7 +289,7 @@ class caldav_driver extends calendar_driver
 		return $items;
 	}
 	
-	private function _ParseEvent($event, $item)
+	private function _ParseEvent($event, &$item)
 	{
 		$properties = $event->GetProperties();
 		foreach ($properties as $property)
@@ -392,8 +392,7 @@ class caldav_driver extends calendar_driver
 		{
 			$rrule['FREQ'] = $freq;
 		}
-		$values = $property->Value();
-		$rrules = explode(";", $rrulestr);
+		$rrules = explode(";", $property->Value());
 		foreach ($rrules as $rrule)
 		{
 			$rule = explode("=", $rrule);
