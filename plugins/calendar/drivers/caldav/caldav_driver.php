@@ -39,10 +39,10 @@ class caldav_driver extends calendar_driver
 		require_once($this->cal->home . '/lib/caldav-client-v2.php');
 		
 		// get the caldav path
-		$url = str_replace('%u', $this->rc->user->ID, $this->rc->config->get('caldav_path'));
+		$url = str_replace('%u', $_SESSION['username'], $this->rc->config->get('caldav_path'));
 		
 		// Open CalDAV connection
-		$this->caldav = new CalDAVClient($url, $this->rc->user->ID, $this->rc->decrypt($_SESSION['password']));
+		$this->caldav = new CalDAVClient($url, $_SESSION['username'], $this->rc->decrypt($_SESSION['password']));
 	}
 	
 	
