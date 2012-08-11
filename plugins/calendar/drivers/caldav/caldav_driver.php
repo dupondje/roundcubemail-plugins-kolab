@@ -390,11 +390,11 @@ class caldav_driver extends calendar_driver
 	
 	private function _ParseRRULE($property)
 	{
-		$rrule = array();
+		$recurrence = array();
 		$freq = $property->GetParameterValue("FREQ");
 		if ($freq)
 		{
-			$rrule['FREQ'] = $freq;
+			$recurrence['FREQ'] = $freq;
 		}
 		$rrules = explode(";", $property->Value());
 		foreach ($rrules as $rrule)
@@ -403,19 +403,19 @@ class caldav_driver extends calendar_driver
 			switch ($rule[0])
 			{
 				case "INTERVAL":
-					$rrule['INTERVAL'] = $rule[1];
+					$recurrence['INTERVAL'] = $rule[1];
 					break;
 				
 				case "UNTIL":
-					$rrule['UNTIL'] = $this->_MakeUTCDate($rule[1]);
+					$recurrence['UNTIL'] = $this->_MakeUTCDate($rule[1]);
 					break;
 				
 				case "COUNT":
-					$rrule['COUNT'] = $rule[1];
+					$recurrence['COUNT'] = $rule[1];
 					break;
 			}
 		}
-		return $rrule;
+		return $recurrence;
 	}
 	
 	/**
