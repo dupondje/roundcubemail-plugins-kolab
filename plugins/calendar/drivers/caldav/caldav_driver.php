@@ -291,6 +291,9 @@ class caldav_driver extends calendar_driver
 	
 	private function _ParseEvent($event, &$item)
 	{
+		//Defaults
+		$item['sensitivity'] = "0";
+		
 		$properties = $event->GetProperties();
 		foreach ($properties as $property)
 		{
