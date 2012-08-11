@@ -391,17 +391,16 @@ class caldav_driver extends calendar_driver
 	private function _ParseRRULE($property)
 	{
 		$recurrence = array();
-		$freq = $property->GetParameterValue("FREQ");
-		if ($freq)
-		{
-			$recurrence['FREQ'] = $freq;
-		}
 		$rrules = explode(";", $property->Value());
 		foreach ($rrules as $rrule)
 		{
 			$rule = explode("=", $rrule);
 			switch ($rule[0])
 			{
+				case "FREQ":
+					$recurrence['FREQ'] = $rule[1];
+					break;
+					
 				case "INTERVAL":
 					$recurrence['INTERVAL'] = $rule[1];
 					break;
