@@ -338,6 +338,10 @@ class caldav_driver extends calendar_driver
 					
 				case "EXDATE":
 					$exdate = $property->Value();
+					if (!is_array($item['recurrence']))
+					{
+						$item['recurrence'] = array();
+					}
 					$item['recurrence']['EXDATE'] = array();
 					$dates = explode(",", $exdate);
 					foreach ($dates as $date)
