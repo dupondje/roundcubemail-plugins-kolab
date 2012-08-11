@@ -279,7 +279,7 @@ class caldav_driver extends calendar_driver
 				$rec = $event->GetProperties("RECURRENCE-ID");
 				if (count($rec) > 0)
 				{
-					$item['recurrence_id'] = reset($rec);
+					$item['recurrence_id'] = $id;
 				}
 				$this->_ParseEvent($event, $item);
 			}
@@ -339,7 +339,7 @@ class caldav_driver extends calendar_driver
 				case "EXDATE":
 					$exdate = $property->Value();
 					$item['recurrence']['EXDATE'] = array();
-					$dates = explode(",", $exdata);
+					$dates = explode(",", $exdate);
 					foreach ($dates as $date)
 					{
 						$item['recurrence']['EXDATE'][] = $this->_MakeUTCDate($date);
